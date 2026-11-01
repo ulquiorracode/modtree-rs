@@ -171,8 +171,9 @@ To ensure zero-allocation operation on the hot execution path:
 The repository is organized into cleanly partitioned crates:
 
 - **`crates/modtree-core`**: Pure `#![no_std]` core engine containing the
-  domain taxonomy, `FlowControl`, node structs (`ModuleNode`, `LibraryNode`,
-  `PluginNode`, `CommandNode`), and the zero-allocation SMA dispatcher.
+  domain taxonomy, node structs (`ModuleNode`, `LibraryNode`,
+  `PluginNode`, `CommandNode`), and the zero-allocation SMA dispatcher, powered
+  by canonical `stitch-core` traversal primitives (`FlowControl`).
 - **`crates/modtree-macros`**: Procedural macro attributes parsing syntax trees
   and expanding high-DX boilerplate at compile time.
 - **`modtree`** (root): Top-level facade unifying the core engine and procedural
@@ -184,9 +185,13 @@ The repository is organized into cleanly partitioned crates:
 
 `modtree` serves as the routing backbone across several core systems:
 
+- **`stitch-rs`**: `modtree` directly adopts `stitch-core` as its foundational
+  SMA contract substrate (`FlowControl`), ensuring seamless interoperability
+  between linear monomorphic pipelines and hierarchical command trees.
 - **`statefs`**: Nodes in `modtree` can mount dynamic state projections from
   `statefs`, mapping `/ops/...` actions directly to underlying `/state/...`
-  variables.
+  variables. While `statefs` manages passive state (Data Plane), `modtree`
+  manages active execution pipelines (Control Plane).
 - **`GoldSrc.rs`**: Replaces legacy dynamic plugin registration tables
   (such as AMX Mod X forwards/natives) with a statically validated,
   hierarchical command and event routing tree.

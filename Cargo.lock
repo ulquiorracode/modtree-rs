@@ -274,6 +274,9 @@ dependencies = [
 [[package]]
 name = "modtree-core"
 version = "0.2.0"
+dependencies = [
+ "stitch-core",
+]
 
 [[package]]
 name = "modtree-macros"
@@ -469,6 +472,11 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "stitch-core"
+version = "0.3.0"
+source = "git+https://github.com/ulquiorracode/stitch-rs.git?branch=dev#89de13aedcc61e13af97ccb8cc07f543080071ad"
 
 [[package]]
 name = "syn"

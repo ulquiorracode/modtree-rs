@@ -9,7 +9,8 @@ repository = "https://github.com/ulquiorracode/modtree-rs"
 
 [features]
 default = ["std"]
-std = ["alloc"]
+std = ["alloc", "stitch-core/std"]
 alloc = []
 
 [dependencies]
+stitch-core = { git = "https://github.com/ulquiorracode/stitch-rs.git", branch = "dev", default-features = false }

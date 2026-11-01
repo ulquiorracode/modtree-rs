@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `IntoTreeNode` and `AsTreeNode` conversion traits for modular composition.
 - Fluent builder methods: `ModuleNode::named`, `LibraryNode::named`,
   `CommandNode::named`, `PluginNode::named`, and `ModuleNode::with_mounted`.
+- Unified SMA foundation: Adopted `stitch-core` as canonical dependency for
+  `FlowControl`, eliminating duplicate definitions and standardizing U-cycle
+  contracts across the ecosystem.
 - End-to-end integration tests for macro tree expansion in `tests/macro_integration.rs`.
 
 ### Changed
