@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD041 -->
 ### Summary
 
 - High-level context and architectural motivation for this change.

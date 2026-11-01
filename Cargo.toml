@@ -1,12 +1,12 @@
 [package]
-name = "template-systems-rs"
+name = "modtree"
 version = "0.1.0"
 edition = "2024"
 authors = ["UlquiorraCode Contributors"]
 license = "MIT OR Apache-2.0"
-description = "Battle-tested systems-grade template for high-performance Rust services, engines, and libraries"
+description = "Ultra-fast zero-allocation hierarchical modular routing & tree composition engine in Rust"
 readme = "README.md"
-repository = "https://github.com/ulquiorracode/template-systems-rs"
+repository = "https://github.com/ulquiorracode/modtree-rs"
 
 [dependencies]
 
