@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Bundle` deployment specification and package system in `crates/modtree-core`:
+  - `Bundle` trait (`descriptor`, `install`, `uninstall`).
+  - `BundleDescriptor` containing package metadata (`name`, `version`,
+    `description`, `author`).
+  - `BundleError` for lifecycle failures (`MountConflict`, `InvalidMountPath`,
+    `MissingDependency`, `InstallationFailed`).
+  - `StaticBundle` and `BundleBuilder` fluent builder for programmatic
+    bundle construction.
+  - Path-routing and automated tree synthesis: `ModuleNode::mount_into` and
+    `mount_at` with fast-fail conflict checking.
+- Procedural macro attribute `#[modtree::bundle]` in `crates/modtree-macros`:
+  - Declarative bundle definitions on structs.
+  - Declarative field mount targets via `#[modtree::mount("sub/path")]`.
+  - Package metadata attributes: `#[modtree::version]`,
+    `#[modtree::description]`, `#[modtree::author]`.
+- End-to-end integration tests for macro-based and builder-based bundle
+  installation in `tests/bundle_integration.rs`.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

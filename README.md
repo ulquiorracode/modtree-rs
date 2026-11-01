@@ -36,7 +36,7 @@ as structured trees:
   directly upon the canonical `stitch-core` foundational contracts.
 - **`modtree-macros`** (`crates/modtree-macros`): High-DX procedural macro
   attributes (`#[modtree::module]`, `#[modtree::library]`,
-  `#[modtree::command]`).
+  `#[modtree::command]`, `#[modtree::bundle]`).
 
 ## Tiered Developer Experience (DX)
 
@@ -106,6 +106,9 @@ assert_eq!(res, Ok(true));
   executable commands without further branching.
 - **Command**: Terminal execution point representing a concrete command, action,
   or handler.
+- **Bundle**: Declarative, installable component package and deployment
+  manifest (analogous to a container image) mapping subtrees, libraries, and
+  commands into designated path locations in a tree.
 
 ## Versioning & Governance
 

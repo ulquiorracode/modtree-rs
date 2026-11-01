@@ -6,13 +6,13 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, vec::Vec};
 
+use crate::bundle::BundleError;
 use crate::error::RoutingError;
 use crate::flow::FlowControl;
 use crate::node::{CommandHandler, EnterHook, ExitHook, NodeDescriptor};
 use crate::taxonomy::NodeKind;
 
 /// Terminal command node representing a concrete execution point or handler.
-#[derive(Clone)]
 pub struct CommandNode<Ctx, Intent, Outcome, E> {
     /// Metadata descriptor for this command.
     pub descriptor: NodeDescriptor,
@@ -22,6 +22,17 @@ pub struct CommandNode<Ctx, Intent, Outcome, E> {
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
     pub on_exit: Option<ExitHook<Ctx, Intent, Outcome, E>>,
+}
+
+impl<Ctx, Intent, Outcome, E> Clone for CommandNode<Ctx, Intent, Outcome, E> {
+    fn clone(&self) -> Self {
+        Self {
+            descriptor: self.descriptor,
+            handler: self.handler,
+            on_enter: self.on_enter,
+            on_exit: self.on_exit,
+        }
+    }
 }
 
 impl<Ctx, Intent, Outcome, E> CommandNode<Ctx, Intent, Outcome, E> {
@@ -45,6 +56,12 @@ impl<Ctx, Intent, Outcome, E> CommandNode<Ctx, Intent, Outcome, E> {
         Self::new(name, handler)
     }
 
+    /// Returns the name of the command.
+    #[inline(always)]
+    pub const fn name(&self) -> &'static str {
+        self.descriptor.name
+    }
+
     /// Attaches an `on_enter` descent hook to this command.
     #[inline]
     pub const fn with_enter(mut self, hook: EnterHook<Ctx, Intent, Outcome, E>) -> Self {
@@ -66,7 +83,6 @@ impl<Ctx, Intent, Outcome, E> CommandNode<Ctx, Intent, Outcome, E> {
 /// A `LibraryNode` can ONLY contain child [`CommandNode`] instances. It cannot contain
 /// nested `ModuleNode`, `LibraryNode`, or `PluginNode` instances.
 #[cfg(feature = "alloc")]
-#[derive(Clone)]
 pub struct LibraryNode<Ctx, Intent, Outcome, E> {
     /// Metadata descriptor for this library.
     pub descriptor: NodeDescriptor,
@@ -76,6 +92,18 @@ pub struct LibraryNode<Ctx, Intent, Outcome, E> {
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
     pub on_exit: Option<ExitHook<Ctx, Intent, Outcome, E>>,
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> Clone for LibraryNode<Ctx, Intent, Outcome, E> {
+    fn clone(&self) -> Self {
+        Self {
+            descriptor: self.descriptor,
+            commands: self.commands.clone(),
+            on_enter: self.on_enter,
+            on_exit: self.on_exit,
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -95,6 +123,12 @@ impl<Ctx, Intent, Outcome, E> LibraryNode<Ctx, Intent, Outcome, E> {
     #[inline]
     pub const fn named(name: &'static str) -> Self {
         Self::new(name)
+    }
+
+    /// Returns the name of the library.
+    #[inline(always)]
+    pub const fn name(&self) -> &'static str {
+        self.descriptor.name
     }
 
     /// Appends a terminal command to this library.
@@ -127,7 +161,6 @@ impl<Ctx, Intent, Outcome, E> LibraryNode<Ctx, Intent, Outcome, E> {
 
 /// Dynamic plugin mount node representing an isolated subsystem or runtime module.
 #[cfg(feature = "alloc")]
-#[derive(Clone)]
 pub struct PluginNode<Ctx, Intent, Outcome, E> {
     /// Metadata descriptor for this plugin mount.
     pub descriptor: NodeDescriptor,
@@ -137,6 +170,18 @@ pub struct PluginNode<Ctx, Intent, Outcome, E> {
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
     pub on_exit: Option<ExitHook<Ctx, Intent, Outcome, E>>,
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> Clone for PluginNode<Ctx, Intent, Outcome, E> {
+    fn clone(&self) -> Self {
+        Self {
+            descriptor: self.descriptor,
+            root: self.root.clone(),
+            on_enter: self.on_enter,
+            on_exit: self.on_exit,
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -158,6 +203,12 @@ impl<Ctx, Intent, Outcome, E> PluginNode<Ctx, Intent, Outcome, E> {
         Self::new(name, root)
     }
 
+    /// Returns the name of the plugin mount.
+    #[inline(always)]
+    pub const fn name(&self) -> &'static str {
+        self.descriptor.name
+    }
+
     /// Attaches an `on_enter` descent hook to this plugin.
     #[inline]
     pub const fn with_enter(mut self, hook: EnterHook<Ctx, Intent, Outcome, E>) -> Self {
@@ -175,7 +226,6 @@ impl<Ctx, Intent, Outcome, E> PluginNode<Ctx, Intent, Outcome, E> {
 
 /// Composite structural module containing child nodes of any valid type.
 #[cfg(feature = "alloc")]
-#[derive(Clone)]
 pub struct ModuleNode<Ctx, Intent, Outcome, E> {
     /// Metadata descriptor for this module.
     pub descriptor: NodeDescriptor,
@@ -185,6 +235,18 @@ pub struct ModuleNode<Ctx, Intent, Outcome, E> {
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
     pub on_exit: Option<ExitHook<Ctx, Intent, Outcome, E>>,
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> Clone for ModuleNode<Ctx, Intent, Outcome, E> {
+    fn clone(&self) -> Self {
+        Self {
+            descriptor: self.descriptor,
+            children: self.children.clone(),
+            on_enter: self.on_enter,
+            on_exit: self.on_exit,
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -204,6 +266,12 @@ impl<Ctx, Intent, Outcome, E> ModuleNode<Ctx, Intent, Outcome, E> {
     #[inline]
     pub const fn named(name: &'static str) -> Self {
         Self::new(name)
+    }
+
+    /// Returns the name of the module.
+    #[inline(always)]
+    pub const fn name(&self) -> &'static str {
+        self.descriptor.name
     }
 
     /// Appends a child node to this module.
@@ -251,11 +319,111 @@ impl<Ctx, Intent, Outcome, E> ModuleNode<Ctx, Intent, Outcome, E> {
         self.on_exit = Some(hook);
         self
     }
+
+    /// Finds a direct child by its name.
+    #[inline]
+    pub fn find_child_mut(&mut self, name: &str) -> Option<&mut TreeNode<Ctx, Intent, Outcome, E>> {
+        self.children.iter_mut().find(|c| c.name() == name)
+    }
+
+    /// Recursively traverses a hierarchy path to locate a mutable reference to a target module.
+    pub fn find_module_mut(
+        &mut self,
+        path: &[&str],
+    ) -> Option<&mut ModuleNode<Ctx, Intent, Outcome, E>> {
+        let path = if !path.is_empty() && path[0] == self.descriptor.name {
+            &path[1..]
+        } else {
+            path
+        };
+
+        if path.is_empty() {
+            return Some(self);
+        }
+
+        let target = path[0];
+        let remaining = &path[1..];
+
+        for child in &mut self.children {
+            match child {
+                TreeNode::Module(m) if m.name() == target => {
+                    return m.find_module_mut(remaining);
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// Mounts a node into a target parent module specified by `parent_path`.
+    /// Intermediate modules are automatically created if they do not exist.
+    pub fn mount_into(
+        &mut self,
+        parent_path: &[&'static str],
+        node: TreeNode<Ctx, Intent, Outcome, E>,
+    ) -> Result<(), BundleError> {
+        let path = if !parent_path.is_empty() && parent_path[0] == self.descriptor.name {
+            &parent_path[1..]
+        } else {
+            parent_path
+        };
+
+        if path.is_empty() {
+            let name = node.name();
+            if self.find_child_mut(name).is_some() {
+                return Err(BundleError::MountConflict {
+                    target: name,
+                    reason: "child with the same name already exists in target module",
+                });
+            }
+            self.children.push(node);
+            return Ok(());
+        }
+
+        let segment = path[0];
+        let remaining = &path[1..];
+
+        let child_idx = match self.children.iter().position(|c| c.name() == segment) {
+            Some(idx) => {
+                if !matches!(self.children[idx], TreeNode::Module(_)) {
+                    return Err(BundleError::MountConflict {
+                        target: segment,
+                        reason: "path traversal encountered a non-module branch",
+                    });
+                }
+                idx
+            }
+            None => {
+                let new_module = TreeNode::Module(ModuleNode::new(segment));
+                self.children.push(new_module);
+                self.children.len() - 1
+            }
+        };
+
+        if let TreeNode::Module(ref mut m) = self.children[child_idx] {
+            m.mount_into(remaining, node)
+        } else {
+            unreachable!()
+        }
+    }
+
+    /// Mounts a node at an explicit path including its own terminal name.
+    /// Intermediate modules are automatically created if they do not exist.
+    pub fn mount_at(
+        &mut self,
+        full_path: &[&'static str],
+        node: TreeNode<Ctx, Intent, Outcome, E>,
+    ) -> Result<(), BundleError> {
+        if full_path.is_empty() {
+            return Err(BundleError::InvalidMountPath("empty mount path"));
+        }
+        let parent_path = &full_path[..full_path.len() - 1];
+        self.mount_into(parent_path, node)
+    }
 }
 
 /// Generalized node variant in the hierarchy.
 #[cfg(feature = "alloc")]
-#[derive(Clone)]
 pub enum TreeNode<Ctx, Intent, Outcome, E> {
     /// Structural branch module.
     Module(ModuleNode<Ctx, Intent, Outcome, E>),
@@ -265,6 +433,18 @@ pub enum TreeNode<Ctx, Intent, Outcome, E> {
     Plugin(PluginNode<Ctx, Intent, Outcome, E>),
     /// Terminal executable command.
     Command(CommandNode<Ctx, Intent, Outcome, E>),
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> Clone for TreeNode<Ctx, Intent, Outcome, E> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Module(m) => Self::Module(m.clone()),
+            Self::Library(l) => Self::Library(l.clone()),
+            Self::Plugin(p) => Self::Plugin(p.clone()),
+            Self::Command(cmd) => Self::Command(cmd.clone()),
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]
