@@ -8,6 +8,11 @@ description = "Ultra-fast zero-allocation hierarchical modular routing & tree co
 readme = "README.md"
 repository = "https://github.com/ulquiorracode/modtree-rs"
 
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
 [dependencies]
 
 [dev-dependencies]
