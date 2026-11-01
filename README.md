@@ -32,8 +32,8 @@ as structured trees:
 - **`modtree`** (root): Top-level facade crate re-exporting `modtree-core`
   and optionally `modtree-macros` (`features = ["macros"]`).
 - **`modtree-core`** (`crates/modtree-core`): Pure `#![no_std]` core engine
-  providing taxonomy, flow control, node structures, and the SMA traversal
-  dispatcher.
+  providing taxonomy, node structures, and the SMA traversal dispatcher, built
+  directly upon the canonical `stitch-core` foundational contracts.
 - **`modtree-macros`** (`crates/modtree-macros`): High-DX procedural macro
   attributes (`#[modtree::module]`, `#[modtree::library]`,
   `#[modtree::command]`).
