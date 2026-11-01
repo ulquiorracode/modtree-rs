@@ -27,6 +27,17 @@ as structured trees:
 - **Pluggable Orthogonality**: Clean separation between routing, state
   storage (e.g. `statefs`), and isolation containers.
 
+## Workspace Architecture
+
+- **`modtree`** (root): Top-level facade crate re-exporting `modtree-core`
+  and optionally `modtree-macros` (`features = ["macros"]`).
+- **`modtree-core`** (`crates/modtree-core`): Pure `#![no_std]` core engine
+  providing taxonomy, flow control, node structures, and the SMA traversal
+  dispatcher.
+- **`modtree-macros`** (`crates/modtree-macros`): High-DX procedural macro
+  attributes (`#[modtree::module]`, `#[modtree::library]`,
+  `#[modtree::command]`).
+
 ## Tiered Developer Experience (DX)
 
 `modtree` provides a layered DX architecture:
@@ -36,8 +47,8 @@ as structured trees:
   `#[modtree::command]`. Direct function identifiers are used for hooks
   (`enter = check_auth`), preserving IDE navigation and type safety.
 - **Tier 2 (Fluent Builder API)**: Type-safe builders (`ModuleNode::named`,
-  `LibraryNode::named`) with the typestate pattern enforcing that
-  libraries only host terminal leaves.
+  `LibraryNode::named`, `CommandNode::named`) with the typestate pattern
+  enforcing that libraries only host terminal commands.
 - **Tier 3 (Core SMA Traversal)**: Zero-allocation dispatch engine
   operating on CPU stack frames and byte slices.
 
@@ -92,8 +103,8 @@ assert_eq!(res, Ok(true));
 - **Plugin**: Dynamic mount node with capability constraints, sandboxing
   boundaries, and runtime lifecycle hooks.
 - **Library**: Terminal container group exposing a flat collection of
-  executable leaves without further branching.
-- **Leaf**: Terminal execution point representing a concrete command, action,
+  executable commands without further branching.
+- **Command**: Terminal execution point representing a concrete command, action,
   or handler.
 
 ## Versioning & Governance
@@ -103,7 +114,8 @@ All breaking changes, deprecations, and feature enhancements are tracked
 in [CHANGELOG.md](CHANGELOG.md).
 
 - `0.1.x`: Initial domain taxonomy and SMA U-cycle execution engine.
-- `0.2.x`: Procedural macro attributes and tiered DX builders.
+- `0.2.x`: Procedural macro attributes, canonical workspace layout, and
+  command nomenclature refactoring.
 
 ## Architectural Documentation
 

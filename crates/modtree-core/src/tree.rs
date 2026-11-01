@@ -8,48 +8,51 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::error::RoutingError;
 use crate::flow::FlowControl;
-use crate::node::{EnterHook, ExitHook, LeafHandler, NodeDescriptor};
+use crate::node::{CommandHandler, EnterHook, ExitHook, NodeDescriptor};
 use crate::taxonomy::NodeKind;
 
-/// Terminal leaf node representing a concrete command or execution point.
+/// Terminal command node representing a concrete execution point or handler.
 #[derive(Clone)]
-pub struct LeafNode<Ctx, Intent, Outcome, E> {
-    /// Metadata descriptor for this leaf.
+pub struct CommandNode<Ctx, Intent, Outcome, E> {
+    /// Metadata descriptor for this command.
     pub descriptor: NodeDescriptor,
     /// Terminal execution handler.
-    pub handler: LeafHandler<Ctx, Intent, Outcome, E>,
+    pub handler: CommandHandler<Ctx, Intent, Outcome, E>,
     /// Optional hook executed during descent.
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
     pub on_exit: Option<ExitHook<Ctx, Intent, Outcome, E>>,
 }
 
-impl<Ctx, Intent, Outcome, E> LeafNode<Ctx, Intent, Outcome, E> {
-    /// Creates a new terminal leaf node with the given name and handler.
+impl<Ctx, Intent, Outcome, E> CommandNode<Ctx, Intent, Outcome, E> {
+    /// Creates a new terminal command node with the given name and handler.
     #[inline]
-    pub const fn new(name: &'static str, handler: LeafHandler<Ctx, Intent, Outcome, E>) -> Self {
+    pub const fn new(name: &'static str, handler: CommandHandler<Ctx, Intent, Outcome, E>) -> Self {
         Self {
-            descriptor: NodeDescriptor::new(name, NodeKind::Leaf),
+            descriptor: NodeDescriptor::new(name, NodeKind::Command),
             handler,
             on_enter: None,
             on_exit: None,
         }
     }
 
-    /// Ergonomic alias for [`LeafNode::new`].
+    /// Ergonomic alias for [`CommandNode::new`].
     #[inline]
-    pub const fn named(name: &'static str, handler: LeafHandler<Ctx, Intent, Outcome, E>) -> Self {
+    pub const fn named(
+        name: &'static str,
+        handler: CommandHandler<Ctx, Intent, Outcome, E>,
+    ) -> Self {
         Self::new(name, handler)
     }
 
-    /// Attaches an `on_enter` descent hook to this leaf.
+    /// Attaches an `on_enter` descent hook to this command.
     #[inline]
     pub const fn with_enter(mut self, hook: EnterHook<Ctx, Intent, Outcome, E>) -> Self {
         self.on_enter = Some(hook);
         self
     }
 
-    /// Attaches an `on_exit` ascent hook to this leaf.
+    /// Attaches an `on_exit` ascent hook to this command.
     #[inline]
     pub const fn with_exit(mut self, hook: ExitHook<Ctx, Intent, Outcome, E>) -> Self {
         self.on_exit = Some(hook);
@@ -57,18 +60,18 @@ impl<Ctx, Intent, Outcome, E> LeafNode<Ctx, Intent, Outcome, E> {
     }
 }
 
-/// Flat library node containing strictly terminal leaves.
+/// Flat library node containing strictly terminal commands.
 ///
 /// # Structural Invariant
-/// A `LibraryNode` can ONLY contain child [`LeafNode`] instances. It cannot contain
+/// A `LibraryNode` can ONLY contain child [`CommandNode`] instances. It cannot contain
 /// nested `ModuleNode`, `LibraryNode`, or `PluginNode` instances.
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct LibraryNode<Ctx, Intent, Outcome, E> {
     /// Metadata descriptor for this library.
     pub descriptor: NodeDescriptor,
-    /// Flat collection of terminal leaves.
-    pub leaves: Vec<LeafNode<Ctx, Intent, Outcome, E>>,
+    /// Flat collection of terminal commands.
+    pub commands: Vec<CommandNode<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during descent.
     pub on_enter: Option<EnterHook<Ctx, Intent, Outcome, E>>,
     /// Optional hook executed during ascent.
@@ -82,7 +85,7 @@ impl<Ctx, Intent, Outcome, E> LibraryNode<Ctx, Intent, Outcome, E> {
     pub const fn new(name: &'static str) -> Self {
         Self {
             descriptor: NodeDescriptor::new(name, NodeKind::Library),
-            leaves: Vec::new(),
+            commands: Vec::new(),
             on_enter: None,
             on_exit: None,
         }
@@ -94,16 +97,16 @@ impl<Ctx, Intent, Outcome, E> LibraryNode<Ctx, Intent, Outcome, E> {
         Self::new(name)
     }
 
-    /// Appends a terminal leaf to this library.
+    /// Appends a terminal command to this library.
     #[inline]
-    pub fn add_leaf(&mut self, leaf: LeafNode<Ctx, Intent, Outcome, E>) {
-        self.leaves.push(leaf);
+    pub fn add_command(&mut self, cmd: CommandNode<Ctx, Intent, Outcome, E>) {
+        self.commands.push(cmd);
     }
 
-    /// Builder method to add a leaf.
+    /// Builder method to add a terminal command.
     #[inline]
-    pub fn with_leaf(mut self, leaf: LeafNode<Ctx, Intent, Outcome, E>) -> Self {
-        self.leaves.push(leaf);
+    pub fn with_command(mut self, cmd: CommandNode<Ctx, Intent, Outcome, E>) -> Self {
+        self.commands.push(cmd);
         self
     }
 
@@ -256,12 +259,12 @@ impl<Ctx, Intent, Outcome, E> ModuleNode<Ctx, Intent, Outcome, E> {
 pub enum TreeNode<Ctx, Intent, Outcome, E> {
     /// Structural branch module.
     Module(ModuleNode<Ctx, Intent, Outcome, E>),
-    /// Flat restricted container for leaves.
+    /// Flat restricted container for commands.
     Library(LibraryNode<Ctx, Intent, Outcome, E>),
     /// Dynamic mount point.
     Plugin(PluginNode<Ctx, Intent, Outcome, E>),
-    /// Terminal executable leaf.
-    Leaf(LeafNode<Ctx, Intent, Outcome, E>),
+    /// Terminal executable command.
+    Command(CommandNode<Ctx, Intent, Outcome, E>),
 }
 
 #[cfg(feature = "alloc")]
@@ -273,7 +276,7 @@ impl<Ctx, Intent, Outcome, E> TreeNode<Ctx, Intent, Outcome, E> {
             Self::Module(m) => &m.descriptor,
             Self::Library(l) => &l.descriptor,
             Self::Plugin(p) => &p.descriptor,
-            Self::Leaf(leaf) => &leaf.descriptor,
+            Self::Command(cmd) => &cmd.descriptor,
         }
     }
 
@@ -296,7 +299,7 @@ impl<Ctx, Intent, Outcome, E> TreeNode<Ctx, Intent, Outcome, E> {
             Self::Module(m) => m.on_enter,
             Self::Library(l) => l.on_enter,
             Self::Plugin(p) => p.on_enter,
-            Self::Leaf(leaf) => leaf.on_enter,
+            Self::Command(cmd) => cmd.on_enter,
         };
         match hook {
             Some(f) => f(ctx, intent),
@@ -316,7 +319,7 @@ impl<Ctx, Intent, Outcome, E> TreeNode<Ctx, Intent, Outcome, E> {
             Self::Module(m) => m.on_exit,
             Self::Library(l) => l.on_exit,
             Self::Plugin(p) => p.on_exit,
-            Self::Leaf(leaf) => leaf.on_exit,
+            Self::Command(cmd) => cmd.on_exit,
         };
         if let Some(f) = hook {
             f(ctx, intent, outcome);
@@ -373,11 +376,11 @@ impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
 
 #[cfg(feature = "alloc")]
 impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
-    for LeafNode<Ctx, Intent, Outcome, E>
+    for CommandNode<Ctx, Intent, Outcome, E>
 {
     #[inline(always)]
     fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
-        TreeNode::Leaf(self)
+        TreeNode::Command(self)
     }
 }
 

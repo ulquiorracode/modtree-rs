@@ -7,14 +7,14 @@ struct BenchContext {
 }
 
 fn benchmark_u_cycle_dispatch(c: &mut Criterion) {
-    let ban_leaf = LeafNode::new(
+    let ban_cmd = CommandNode::new(
         "ban",
         |_ctx: &mut BenchContext, (user_id, reason_code): (u64, u32)| {
             Ok(user_id ^ (reason_code as u64))
         },
     );
 
-    let users_lib = LibraryNode::new("users").with_leaf(ban_leaf);
+    let users_lib = LibraryNode::new("users").with_command(ban_cmd);
 
     let admin_mod = ModuleNode::new("admin")
         .with_child(TreeNode::Library(users_lib))

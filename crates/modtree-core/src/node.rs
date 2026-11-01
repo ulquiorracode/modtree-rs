@@ -12,8 +12,8 @@ pub type EnterHook<Ctx, Intent, Outcome, E> =
 pub type ExitHook<Ctx, Intent, Outcome, E> =
     fn(&mut Ctx, &Intent, &mut Result<Outcome, RoutingError<E>>);
 
-/// Execution handler invoked at the terminal leaf.
-pub type LeafHandler<Ctx, Intent, Outcome, E> = fn(&mut Ctx, Intent) -> Result<Outcome, E>;
+/// Execution handler invoked at a terminal command.
+pub type CommandHandler<Ctx, Intent, Outcome, E> = fn(&mut Ctx, Intent) -> Result<Outcome, E>;
 
 /// Metadata describing a node in the tree hierarchy.
 #[repr(C)]

@@ -9,7 +9,7 @@ pub enum FlowControl<TIntent = (), TOutcome = (), E = ()> {
 
     /// Short-circuit the descent with an early successful outcome (e.g., cached result).
     ///
-    /// Downstream nodes and the terminal leaf are not executed. The outcome immediately
+    /// Downstream nodes and the terminal command are not executed. The outcome immediately
     /// begins the ascent phase through ancestor nodes via `on_exit`.
     ShortCircuit(TOutcome),
 

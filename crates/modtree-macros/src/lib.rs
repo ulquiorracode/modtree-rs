@@ -389,7 +389,7 @@ pub fn module(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Declares a library node on a struct or `impl` block.
 ///
 /// When declared on an `impl` block, automatically extracts methods marked with
-/// `#[command]` and builds a `LibraryNode` containing strictly `LeafNode` instances.
+/// `#[command]` and builds a `LibraryNode` containing strictly `CommandNode` instances.
 #[proc_macro_attribute]
 pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut meta = parse_macro_input!(attr as NodeMetaArgs);
@@ -494,17 +494,17 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 let cmd_enter = cmd_meta
                     .enter
-                    .map(|path| quote! { leaf = leaf.with_enter(#path); });
+                    .map(|path| quote! { cmd = cmd.with_enter(#path); });
                 let cmd_exit = cmd_meta
                     .exit
-                    .map(|path| quote! { leaf = leaf.with_exit(#path); });
+                    .map(|path| quote! { cmd = cmd.with_exit(#path); });
 
                 command_registrations.push(quote! {
                     {
-                        let mut leaf = ::modtree::tree::LeafNode::new(#cmd_name, Self::#method_ident);
+                        let mut cmd = ::modtree::tree::CommandNode::new(#cmd_name, Self::#method_ident);
                         #cmd_enter
                         #cmd_exit
-                        lib.add_leaf(leaf);
+                        lib.add_command(cmd);
                     }
                 });
             }
@@ -537,7 +537,7 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Marks a method or function as an executable command leaf.
+/// Marks a method or function as an executable command.
 #[proc_macro_attribute]
 pub fn command(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
