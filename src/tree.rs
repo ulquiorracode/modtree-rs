@@ -36,6 +36,12 @@ impl<Ctx, Intent, Outcome, E> LeafNode<Ctx, Intent, Outcome, E> {
         }
     }
 
+    /// Ergonomic alias for [`LeafNode::new`].
+    #[inline]
+    pub const fn named(name: &'static str, handler: LeafHandler<Ctx, Intent, Outcome, E>) -> Self {
+        Self::new(name, handler)
+    }
+
     /// Attaches an `on_enter` descent hook to this leaf.
     #[inline]
     pub const fn with_enter(mut self, hook: EnterHook<Ctx, Intent, Outcome, E>) -> Self {
@@ -80,6 +86,12 @@ impl<Ctx, Intent, Outcome, E> LibraryNode<Ctx, Intent, Outcome, E> {
             on_enter: None,
             on_exit: None,
         }
+    }
+
+    /// Ergonomic alias for [`LibraryNode::new`].
+    #[inline]
+    pub const fn named(name: &'static str) -> Self {
+        Self::new(name)
     }
 
     /// Appends a terminal leaf to this library.
@@ -137,6 +149,12 @@ impl<Ctx, Intent, Outcome, E> PluginNode<Ctx, Intent, Outcome, E> {
         }
     }
 
+    /// Ergonomic alias for [`PluginNode::new`].
+    #[inline]
+    pub fn named(name: &'static str, root: TreeNode<Ctx, Intent, Outcome, E>) -> Self {
+        Self::new(name, root)
+    }
+
     /// Attaches an `on_enter` descent hook to this plugin.
     #[inline]
     pub const fn with_enter(mut self, hook: EnterHook<Ctx, Intent, Outcome, E>) -> Self {
@@ -179,16 +197,41 @@ impl<Ctx, Intent, Outcome, E> ModuleNode<Ctx, Intent, Outcome, E> {
         }
     }
 
+    /// Ergonomic alias for [`ModuleNode::new`].
+    #[inline]
+    pub const fn named(name: &'static str) -> Self {
+        Self::new(name)
+    }
+
     /// Appends a child node to this module.
     #[inline]
     pub fn add_child(&mut self, child: TreeNode<Ctx, Intent, Outcome, E>) {
         self.children.push(child);
     }
 
+    /// Mounts any item implementing [`IntoTreeNode`] into this module.
+    #[inline]
+    pub fn mount<T>(&mut self, child: T)
+    where
+        T: IntoTreeNode<Ctx, Intent, Outcome, E>,
+    {
+        self.children.push(child.into_tree_node());
+    }
+
     /// Builder method to add a child node.
     #[inline]
     pub fn with_child(mut self, child: TreeNode<Ctx, Intent, Outcome, E>) -> Self {
         self.children.push(child);
+        self
+    }
+
+    /// Builder method to mount any item implementing [`IntoTreeNode`].
+    #[inline]
+    pub fn with_mounted<T>(mut self, child: T) -> Self
+    where
+        T: IntoTreeNode<Ctx, Intent, Outcome, E>,
+    {
+        self.mount(child);
         self
     }
 
@@ -278,5 +321,80 @@ impl<Ctx, Intent, Outcome, E> TreeNode<Ctx, Intent, Outcome, E> {
         if let Some(f) = hook {
             f(ctx, intent, outcome);
         }
+    }
+}
+
+/// Conversion trait turning a structural domain type into a [`TreeNode`].
+#[cfg(feature = "alloc")]
+pub trait IntoTreeNode<Ctx, Intent, Outcome, E> {
+    /// Converts this item into a [`TreeNode`].
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E>;
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
+    for TreeNode<Ctx, Intent, Outcome, E>
+{
+    #[inline(always)]
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        self
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
+    for ModuleNode<Ctx, Intent, Outcome, E>
+{
+    #[inline(always)]
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        TreeNode::Module(self)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
+    for LibraryNode<Ctx, Intent, Outcome, E>
+{
+    #[inline(always)]
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        TreeNode::Library(self)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
+    for PluginNode<Ctx, Intent, Outcome, E>
+{
+    #[inline(always)]
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        TreeNode::Plugin(self)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E> IntoTreeNode<Ctx, Intent, Outcome, E>
+    for LeafNode<Ctx, Intent, Outcome, E>
+{
+    #[inline(always)]
+    fn into_tree_node(self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        TreeNode::Leaf(self)
+    }
+}
+
+/// Reference-based trait constructing a [`TreeNode`] representation.
+#[cfg(feature = "alloc")]
+pub trait AsTreeNode<Ctx, Intent, Outcome, E> {
+    /// Constructs a [`TreeNode`] from this reference.
+    fn as_tree_node(&self) -> TreeNode<Ctx, Intent, Outcome, E>;
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx, Intent, Outcome, E, T> AsTreeNode<Ctx, Intent, Outcome, E> for T
+where
+    T: Clone + IntoTreeNode<Ctx, Intent, Outcome, E>,
+{
+    #[inline(always)]
+    fn as_tree_node(&self) -> TreeNode<Ctx, Intent, Outcome, E> {
+        self.clone().into_tree_node()
     }
 }

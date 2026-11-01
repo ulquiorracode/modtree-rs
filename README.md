@@ -27,6 +27,62 @@ as structured trees:
 - **Pluggable Orthogonality**: Clean separation between routing, state
   storage (e.g. `statefs`), and isolation containers.
 
+## Tiered Developer Experience (DX)
+
+`modtree` provides a layered DX architecture:
+
+- **Tier 1 (Attribute Macros)**: Declarative Rust structs and impl blocks
+  annotated with `#[modtree::module]`, `#[modtree::library]`, and
+  `#[modtree::command]`. Direct function identifiers are used for hooks
+  (`enter = check_auth`), preserving IDE navigation and type safety.
+- **Tier 2 (Fluent Builder API)**: Type-safe builders (`ModuleNode::named`,
+  `LibraryNode::named`) with the typestate pattern enforcing that
+  libraries only host terminal leaves.
+- **Tier 3 (Core SMA Traversal)**: Zero-allocation dispatch engine
+  operating on CPU stack frames and byte slices.
+
+### Quick Start Example
+
+```rust
+use modtree::prelude::*;
+
+// 1. Declare a flat library grouping terminal commands
+#[derive(Clone, Default)]
+pub struct UsersLibrary;
+
+#[modtree::library(
+    name = "users",
+    context(MyCtx),
+    intent(u64),
+    outcome(bool),
+    error(&'static str)
+)]
+impl UsersLibrary {
+    #[modtree::command]
+    pub fn ban(ctx: &mut MyCtx, target_id: u64) -> Result<bool, &'static str> {
+        ctx.ban(target_id);
+        Ok(true)
+    }
+}
+
+// 2. Declare a structural module mounting child libraries and modules
+#[modtree::module(
+    name = "admin",
+    context(MyCtx),
+    intent(u64),
+    outcome(bool),
+    error(&'static str)
+)]
+pub struct AdminModule {
+    pub users: UsersLibrary,
+}
+
+// 3. Dispatch with zero heap allocations on the hot path
+let root_node = AdminModule { users: UsersLibrary }.into_tree_node();
+let res = dispatch(&root_node, &["admin", "users", "ban"], &mut ctx, 42);
+assert_eq!(res, Ok(true));
+```
+
 ## Core Concepts
 
 - **Node**: Fundamental unit of the hierarchy with an associated path
@@ -39,6 +95,15 @@ as structured trees:
   executable leaves without further branching.
 - **Leaf**: Terminal execution point representing a concrete command, action,
   or handler.
+
+## Versioning & Governance
+
+`modtree-rs` adheres strictly to [Semantic Versioning 2.0.0](https://semver.org/).
+All breaking changes, deprecations, and feature enhancements are tracked
+in [CHANGELOG.md](CHANGELOG.md).
+
+- `0.1.x`: Initial domain taxonomy and SMA U-cycle execution engine.
+- `0.2.x`: Procedural macro attributes and tiered DX builders.
 
 ## Architectural Documentation
 

@@ -1,0 +1,16 @@
+[package]
+name = "modtree-macros"
+version = "0.1.0"
+edition = "2024"
+authors = ["UlquiorraCode Contributors"]
+license = "MIT OR Apache-2.0"
+description = "Procedural macro attributes for the modtree hierarchical routing engine"
+repository = "https://github.com/ulquiorracode/modtree-rs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
