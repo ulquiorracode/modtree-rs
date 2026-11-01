@@ -178,3 +178,51 @@ To ensure zero-allocation operation on the hot execution path:
   hierarchical command and event routing tree.
 - **CLI Frameworks**: Directly acts as a high-performance execution engine for
   hierarchical CLI applications without runtime reflection.
+
+---
+
+## 6. Tiered Developer Experience & Macro Architecture
+
+To balance mechanical sympathy with ergonomic developer experience,
+`modtree` implements a 3-tier API model:
+
+### 6.1 Tier 1: Attribute Macros (`modtree-macros`)
+
+Declarative domain structs annotated with attributes:
+
+- `#[modtree::module]`: Transforms a struct into a composite `ModuleNode`.
+  Inspects child struct fields and automatically calls `mount(field)` for any
+  field implementing `IntoTreeNode`.
+- `#[modtree::library]`: Annotates an `impl` block or struct. Extracts all
+  methods marked with `#[modtree::command]` and mounts them as terminal
+  `LeafNode` instances.
+- Granular Metadata: `#[modtree::name]`, `#[modtree::enter]`, `#[modtree::exit]`,
+  `#[modtree::context]`, `#[modtree::intent]`, `#[modtree::outcome]`,
+  `#[modtree::error]`. Direct function identifiers are used without string quotes,
+  enabling IDE autocompletion, Go-to-Definition, and compile-time signature checks.
+
+### 6.2 Tier 2: Typestate Fluent Builder
+
+Imperative builders for dynamic and runtime module assembly:
+
+- `ModuleNode::named(name).with_mounted(child)`
+- `LibraryNode::named(name).with_leaf(leaf)`
+
+The typestate pattern restricts `LibraryNode` from exposing general mounting
+methods, preventing invalid child adoption at compile-time.
+
+### 6.3 Tier 3: Core Zero-Allocation Traversal
+
+The foundation executing the U-cycle traversal across `TreeNode` instances on
+the CPU call stack without allocating heap memory during resolution.
+
+---
+
+## 7. Versioning & Stability Guarantees
+
+`modtree-rs` adheres to Semantic Versioning (SemVer 2.0.0):
+
+- **Major (x.0.0)**: Breaking changes to trait signatures (`IntoTreeNode`,
+  `NodeHook`), traversal lifecycles, or public ABI.
+- **Minor (0.x.0)**: New macro attributes, adapters, or non-breaking API additions.
+- **Patch (0.0.x)**: Performance optimizations, internal documentation, or bug fixes.
