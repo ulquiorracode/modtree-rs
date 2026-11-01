@@ -13,11 +13,11 @@ pub enum RoutingError<E = ()> {
     /// Node segment was not found in the current branch.
     NodeNotFound,
 
-    /// Reached a terminal leaf while additional path segments remain unconsumed.
-    UnexpectedTerminalLeaf,
+    /// Reached a terminal command while additional path segments remain unconsumed.
+    UnexpectedTerminalCommand,
 
-    /// Expected a terminal leaf at the end of the route path, but found a branch node.
-    ExpectedTerminalLeaf,
+    /// Expected a terminal command at the end of the route path, but found a branch node.
+    ExpectedTerminalCommand,
 
     /// Structural constraint violation: parent node cannot adopt the given child kind.
     InvalidChildAdoption {
@@ -36,16 +36,16 @@ impl<E: fmt::Display> fmt::Display for RoutingError<E> {
         match self {
             Self::EmptyPath => write!(f, "routing path is empty"),
             Self::NodeNotFound => write!(f, "route segment not found"),
-            Self::UnexpectedTerminalLeaf => {
+            Self::UnexpectedTerminalCommand => {
                 write!(
                     f,
-                    "encountered terminal leaf before path was fully resolved"
+                    "encountered terminal command before path was fully resolved"
                 )
             }
-            Self::ExpectedTerminalLeaf => {
+            Self::ExpectedTerminalCommand => {
                 write!(
                     f,
-                    "path ended on a structural branch instead of a terminal leaf"
+                    "path ended on a structural branch instead of a terminal command"
                 )
             }
             Self::InvalidChildAdoption { parent, child } => {

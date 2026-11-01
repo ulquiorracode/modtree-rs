@@ -50,13 +50,13 @@ impl<'a> Iterator for PathSegments<'a> {
     }
 }
 
-/// Executes a U-cycle traversal down the tree towards the terminal leaf identified by `path`.
+/// Executes a U-cycle traversal down the tree towards the terminal command identified by `path`.
 ///
 /// # Traversal Phases
 /// 1. **Descent**: At each ancestor node, `on_enter` is evaluated. If any node yields
 ///    [`FlowControl::Halt`], execution halts and ascends immediately. If [`FlowControl::ShortCircuit`]
 ///    is yielded, descent ceases and ascent begins with the short-circuited outcome.
-/// 2. **Terminal**: The target leaf executes its handler.
+/// 2. **Terminal**: The target command executes its handler.
 /// 3. **Ascent**: Traversal rewinds up the ancestor chain, calling `on_exit` in reverse order.
 #[cfg(feature = "alloc")]
 pub fn dispatch<Ctx, Intent: Clone, Outcome, E>(
@@ -103,15 +103,15 @@ fn dispatch_node<Ctx, Intent: Clone, Outcome, E>(
 
     // 2. Routing & Terminal Resolution
     let mut outcome = match node {
-        TreeNode::Leaf(leaf) => {
+        TreeNode::Command(cmd) => {
             if !path.is_empty() {
-                Err(RoutingError::UnexpectedTerminalLeaf)
+                Err(RoutingError::UnexpectedTerminalCommand)
             } else {
-                let mut leaf_res = (leaf.handler)(ctx, next_intent).map_err(RoutingError::Halted);
-                if let Some(exit_hook) = leaf.on_exit {
-                    exit_hook(ctx, &intent, &mut leaf_res);
+                let mut cmd_res = (cmd.handler)(ctx, next_intent).map_err(RoutingError::Halted);
+                if let Some(exit_hook) = cmd.on_exit {
+                    exit_hook(ctx, &intent, &mut cmd_res);
                 }
-                leaf_res
+                cmd_res
             }
         }
         TreeNode::Library(library) => dispatch_library(library, path, ctx, next_intent),
@@ -133,19 +133,19 @@ fn dispatch_library<Ctx, Intent: Clone, Outcome, E>(
     intent: Intent,
 ) -> Result<Outcome, RoutingError<E>> {
     if path.is_empty() {
-        return Err(RoutingError::ExpectedTerminalLeaf);
+        return Err(RoutingError::ExpectedTerminalCommand);
     }
 
     let target_name = path[0];
     let remaining_path = &path[1..];
 
     if !remaining_path.is_empty() {
-        return Err(RoutingError::UnexpectedTerminalLeaf);
+        return Err(RoutingError::UnexpectedTerminalCommand);
     }
 
-    for leaf in &library.leaves {
-        if leaf.descriptor.name == target_name {
-            let leaf_intent = match leaf
+    for cmd in &library.commands {
+        if cmd.descriptor.name == target_name {
+            let cmd_intent = match cmd
                 .on_enter
                 .map_or(FlowControl::Proceed(intent.clone()), |f| {
                     f(ctx, intent.clone())
@@ -153,25 +153,25 @@ fn dispatch_library<Ctx, Intent: Clone, Outcome, E>(
                 FlowControl::Proceed(i) => i,
                 FlowControl::ShortCircuit(outcome) => {
                     let mut res = Ok(outcome);
-                    if let Some(exit_hook) = leaf.on_exit {
+                    if let Some(exit_hook) = cmd.on_exit {
                         exit_hook(ctx, &intent, &mut res);
                     }
                     return res;
                 }
                 FlowControl::Halt(err) => {
                     let mut res = Err(RoutingError::Halted(err));
-                    if let Some(exit_hook) = leaf.on_exit {
+                    if let Some(exit_hook) = cmd.on_exit {
                         exit_hook(ctx, &intent, &mut res);
                     }
                     return res;
                 }
             };
 
-            let mut leaf_res = (leaf.handler)(ctx, leaf_intent).map_err(RoutingError::Halted);
-            if let Some(exit_hook) = leaf.on_exit {
-                exit_hook(ctx, &intent, &mut leaf_res);
+            let mut cmd_res = (cmd.handler)(ctx, cmd_intent).map_err(RoutingError::Halted);
+            if let Some(exit_hook) = cmd.on_exit {
+                exit_hook(ctx, &intent, &mut cmd_res);
             }
-            return leaf_res;
+            return cmd_res;
         }
     }
 
@@ -186,7 +186,7 @@ fn dispatch_module<Ctx, Intent: Clone, Outcome, E>(
     intent: Intent,
 ) -> Result<Outcome, RoutingError<E>> {
     if path.is_empty() {
-        return Err(RoutingError::ExpectedTerminalLeaf);
+        return Err(RoutingError::ExpectedTerminalCommand);
     }
 
     let target_name = path[0];
@@ -209,7 +209,7 @@ fn dispatch_plugin<Ctx, Intent: Clone, Outcome, E>(
     intent: Intent,
 ) -> Result<Outcome, RoutingError<E>> {
     if path.is_empty() {
-        return Err(RoutingError::ExpectedTerminalLeaf);
+        return Err(RoutingError::ExpectedTerminalCommand);
     }
 
     // If path starts with plugin root name, route with subpath, else pass full path

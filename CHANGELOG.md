@@ -12,35 +12,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `modtree-macros`: Procedural macro crate providing high-DX attribute macros.
+- `crates/modtree-core`: Extracted core `#![no_std]` zero-allocation routing
+  engine into a dedicated crate with optional `alloc` and `std` features.
+- `crates/modtree-macros`: Procedural macro crate providing high-DX attribute macros.
 - `#[modtree::module]`: Attribute macro for structs creating `ModuleNode` trees.
 - `#[modtree::library]`: Attribute macro for structs and `impl` blocks creating
-  flat `LibraryNode` trees with terminal leaves.
+  flat `LibraryNode` trees containing terminal commands.
 - `#[modtree::command]`: Attribute marking associated functions as executable
-  leaves.
+  commands.
 - Granular attributes: `enter`, `exit`, `name`, `context`, `intent`, `outcome`,
   `error` supporting direct function identifiers without string quotes.
 - `IntoTreeNode` and `AsTreeNode` conversion traits for modular composition.
 - Fluent builder methods: `ModuleNode::named`, `LibraryNode::named`,
-  `LeafNode::named`, `PluginNode::named`, and `ModuleNode::with_mounted`.
-- Comprehensive test coverage for attribute-driven macro tree expansion.
+  `CommandNode::named`, `PluginNode::named`, and `ModuleNode::with_mounted`.
+- End-to-end integration tests for macro tree expansion in `tests/macro_integration.rs`.
 
 ### Changed
 
-- Migrated root package into a Cargo workspace containing `crates/modtree-macros`.
-- Enabled `macros` feature by default in the root `modtree` crate.
+- **Breaking**: Renamed `Leaf` nomenclature to `Command` across the entire codebase:
+  - `NodeKind::Leaf` $\to$ `NodeKind::Command`.
+  - `LeafNode` $\to$ `CommandNode`.
+  - `LeafHandler` $\to$ `CommandHandler`.
+  - `TreeNode::Leaf` $\to$ `TreeNode::Command`.
+  - `LibraryNode::leaves` $\to$ `commands`, `add_leaf` $\to$ `add_command`,
+    and `with_leaf` $\to$ `with_command`.
+  - `RoutingError::UnexpectedTerminalLeaf` $\to$ `RoutingError::UnexpectedTerminalCommand`.
+  - `RoutingError::ExpectedTerminalLeaf` $\to$ `RoutingError::ExpectedTerminalCommand`.
+- Restructured workspace layout into canonical multi-crate workspace:
+  - Root `modtree` crate as an ergonomic facade.
+  - `crates/modtree-core` as `#![no_std]` core.
+  - `crates/modtree-macros` as proc-macro crate.
+- Enabled `macros` and `std` features by default in the root `modtree` facade.
 
 ## [0.1.0] - 2026-11-01
 
 ### Added
 
 - Initial release of `modtree`.
-- Domain taxonomy: `NodeKind` (`Module`, `Library`, `Plugin`, `Leaf`).
+- Domain taxonomy: `NodeKind` (`Module`, `Library`, `Plugin`, `Command`).
 - Zero-cost traversal flow control: `FlowControl` (`Proceed`, `ShortCircuit`,
   `Halt`).
-- Traversal contracts: `NodeHook`, `EnterHook`, `ExitHook`, `LeafHandler`.
+- Traversal contracts: `NodeHook`, `EnterHook`, `ExitHook`, `CommandHandler`.
 - Hierarchical tree nodes: `TreeNode`, `ModuleNode`, `LibraryNode`, `PluginNode`,
-  `LeafNode`.
+  `CommandNode`.
 - Zero-allocation U-cycle traversal dispatcher: `router::dispatch`.
 - Zero-allocation path tokenizer: `PathSegments`.
 - Domain error handling: `RoutingError`.

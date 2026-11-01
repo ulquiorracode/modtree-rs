@@ -1,0 +1,15 @@
+[package]
+name = "modtree-core"
+version = "0.2.0"
+edition = "2024"
+authors = ["UlquiorraCode Contributors"]
+license = "MIT OR Apache-2.0"
+description = "Zero-allocation core hierarchical modular routing & tree composition engine"
+repository = "https://github.com/ulquiorracode/modtree-rs"
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
+[dependencies]
