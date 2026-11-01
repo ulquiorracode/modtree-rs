@@ -94,10 +94,9 @@ impl Parse for NodeMetaArgs {
                     }
                 }
                 Meta::List(list) => {
-                    let ident = list
-                        .path
-                        .get_ident()
-                        .ok_or_else(|| syn::Error::new_spanned(&list.path, "expected identifier"))?;
+                    let ident = list.path.get_ident().ok_or_else(|| {
+                        syn::Error::new_spanned(&list.path, "expected identifier")
+                    })?;
                     match ident.to_string().as_str() {
                         "name" => {
                             let lit: Lit = syn::parse2(list.tokens)?;
@@ -147,16 +146,37 @@ impl Parse for NodeMetaArgs {
 fn extract_sibling_attributes(attrs: &mut Vec<Attribute>, meta: &mut NodeMetaArgs) {
     let mut retained = Vec::new();
     for attr in attrs.drain(..) {
-        let segs: Vec<_> = attr.path().segments.iter().map(|s| s.ident.to_string()).collect();
+        let segs: Vec<_> = attr
+            .path()
+            .segments
+            .iter()
+            .map(|s| s.ident.to_string())
+            .collect();
         let is_modtree_attr = if segs.len() == 1 {
             matches!(
                 segs[0].as_str(),
-                "name" | "enter" | "exit" | "context" | "ctx" | "intent" | "outcome" | "error" | "err"
+                "name"
+                    | "enter"
+                    | "exit"
+                    | "context"
+                    | "ctx"
+                    | "intent"
+                    | "outcome"
+                    | "error"
+                    | "err"
             )
         } else if segs.len() == 2 && segs[0] == "modtree" {
             matches!(
                 segs[1].as_str(),
-                "name" | "enter" | "exit" | "context" | "ctx" | "intent" | "outcome" | "error" | "err"
+                "name"
+                    | "enter"
+                    | "exit"
+                    | "context"
+                    | "ctx"
+                    | "intent"
+                    | "outcome"
+                    | "error"
+                    | "err"
             )
         } else {
             false
@@ -301,8 +321,7 @@ pub fn module(attr: TokenStream, item: TokenStream) -> TokenStream {
         .as_ref()
         .map(|path| quote! { module = module.with_exit(#path); });
 
-    let (impl_gen, ctx_ty, intent_ty, outcome_ty, err_ty) =
-        build_generics(&input.generics, &meta);
+    let (impl_gen, ctx_ty, intent_ty, outcome_ty, err_ty) = build_generics(&input.generics, &meta);
     let (_, ty_gen, where_clause) = input.generics.split_for_impl();
 
     let field_mounts = match &input.fields {
@@ -442,7 +461,12 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
             let mut remaining_attrs = Vec::new();
 
             for attr in method.attrs.drain(..) {
-                let segs: Vec<_> = attr.path().segments.iter().map(|s| s.ident.to_string()).collect();
+                let segs: Vec<_> = attr
+                    .path()
+                    .segments
+                    .iter()
+                    .map(|s| s.ident.to_string())
+                    .collect();
                 let matches_cmd = if segs.len() == 1 {
                     segs[0] == "command"
                 } else if segs.len() == 2 && segs[0] == "modtree" {
@@ -466,9 +490,7 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             if is_command {
                 let method_ident = &method.sig.ident;
-                let cmd_name = cmd_meta
-                    .name
-                    .unwrap_or_else(|| method_ident.to_string());
+                let cmd_name = cmd_meta.name.unwrap_or_else(|| method_ident.to_string());
 
                 let cmd_enter = cmd_meta
                     .enter
