@@ -24,6 +24,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+pub mod bundle;
 pub mod error;
 pub mod flow;
 pub mod node;
@@ -33,6 +34,9 @@ pub mod taxonomy;
 #[cfg(feature = "alloc")]
 pub mod tree;
 
+#[cfg(feature = "alloc")]
+pub use bundle::{Bundle, BundleBuilder, BundleMount, StaticBundle};
+pub use bundle::{BundleDescriptor, BundleError};
 pub use error::RoutingError;
 pub use flow::FlowControl;
 pub use node::{CommandHandler, EnterHook, ExitHook, NodeDescriptor, NodeHook};
@@ -47,6 +51,9 @@ pub use tree::{
 
 /// Unified prelude re-exporting key types, traits, and node constructors.
 pub mod prelude {
+    #[cfg(feature = "alloc")]
+    pub use crate::bundle::{Bundle, BundleBuilder, BundleMount, StaticBundle};
+    pub use crate::bundle::{BundleDescriptor, BundleError};
     pub use crate::error::RoutingError;
     pub use crate::flow::FlowControl;
     pub use crate::node::{CommandHandler, EnterHook, ExitHook, NodeDescriptor, NodeHook};
@@ -250,5 +257,79 @@ mod tests {
             dispatch(&root, &["root", "ping", "extra"], &mut ctx, ()),
             Err(RoutingError::UnexpectedTerminalCommand)
         );
+    }
+
+    #[test]
+    fn test_module_mount_into_and_find() {
+        let mut root = ModuleNode::<TestContext, (), &'static str, &'static str>::new("root");
+
+        let ping_cmd = CommandNode::new("ping", |_ctx, _| Ok("pong"));
+        let stats_cmd = CommandNode::new("stats", |_ctx, _| Ok("100%"));
+
+        // Mount ping into /admin/ops
+        root.mount_into(&["admin", "ops"], TreeNode::Command(ping_cmd))
+            .expect("should mount into nested non-existent path");
+
+        // Mount stats into existing /admin/ops
+        root.mount_into(&["admin", "ops"], TreeNode::Command(stats_cmd))
+            .expect("should mount into existing path");
+
+        // Verify structure
+        let admin = root.find_module_mut(&["admin"]).expect("admin exists");
+        assert_eq!(admin.name(), "admin");
+
+        let ops = root.find_module_mut(&["admin", "ops"]).expect("ops exists");
+        assert_eq!(ops.children.len(), 2);
+
+        // Mounting duplicate should conflict
+        let dupe_cmd = CommandNode::new("ping", |_ctx, _| Ok("dupe"));
+        let err = root.mount_into(&["admin", "ops"], TreeNode::Command(dupe_cmd));
+        assert!(matches!(err, Err(BundleError::MountConflict { .. })));
+
+        // Dispatch verification
+        let mut ctx = TestContext::default();
+        let res = dispatch(
+            &TreeNode::Module(root),
+            &["root", "admin", "ops", "ping"],
+            &mut ctx,
+            (),
+        );
+        assert_eq!(res, Ok("pong"));
+    }
+
+    #[test]
+    fn test_bundle_builder_and_installation() {
+        let mut root = ModuleNode::<TestContext, (i32, i32), i32, &'static str>::new("root");
+
+        let calc_bundle: StaticBundle<TestContext, (i32, i32), i32, &'static str> =
+            BundleBuilder::new("math_tools", "1.0.0")
+                .description("Mathematical operations bundle")
+                .author("Antigravity")
+                .mount_into(
+                    &["services", "math"],
+                    LibraryNode::new("ops")
+                        .with_command(CommandNode::new("add", |_ctx, (a, b)| Ok(a + b))),
+                )
+                .build();
+
+        assert_eq!(calc_bundle.descriptor().name, "math_tools");
+        assert_eq!(calc_bundle.descriptor().version, "1.0.0");
+        assert_eq!(
+            calc_bundle.descriptor().description,
+            "Mathematical operations bundle"
+        );
+
+        calc_bundle
+            .install(&mut root)
+            .expect("installation succeeds");
+
+        let mut ctx = TestContext::default();
+        let res = dispatch(
+            &TreeNode::Module(root),
+            &["root", "services", "math", "ops", "add"],
+            &mut ctx,
+            (15, 27),
+        );
+        assert_eq!(res, Ok(42));
     }
 }

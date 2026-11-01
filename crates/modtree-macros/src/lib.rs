@@ -13,6 +13,9 @@ use syn::{
 #[derive(Default)]
 struct NodeMetaArgs {
     name: Option<String>,
+    version: Option<String>,
+    description: Option<String>,
+    author: Option<String>,
     enter: Option<Path>,
     exit: Option<Path>,
     context_ty: Option<syn::Type>,
@@ -56,6 +59,33 @@ impl Parse for NodeMetaArgs {
                                 meta.name = Some(lit_str.value());
                             } else if let Expr::Path(ExprPath { path, .. }) = &value {
                                 meta.name = path.get_ident().map(|id| id.to_string());
+                            }
+                        }
+                        "version" => {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = &value
+                            {
+                                meta.version = Some(lit_str.value());
+                            }
+                        }
+                        "description" | "desc" => {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = &value
+                            {
+                                meta.description = Some(lit_str.value());
+                            }
+                        }
+                        "author" => {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = &value
+                            {
+                                meta.author = Some(lit_str.value());
                             }
                         }
                         "enter" => {
@@ -102,6 +132,24 @@ impl Parse for NodeMetaArgs {
                             let lit: Lit = syn::parse2(list.tokens)?;
                             if let Lit::Str(s) = lit {
                                 meta.name = Some(s.value());
+                            }
+                        }
+                        "version" => {
+                            let lit: Lit = syn::parse2(list.tokens)?;
+                            if let Lit::Str(s) = lit {
+                                meta.version = Some(s.value());
+                            }
+                        }
+                        "description" | "desc" => {
+                            let lit: Lit = syn::parse2(list.tokens)?;
+                            if let Lit::Str(s) = lit {
+                                meta.description = Some(s.value());
+                            }
+                        }
+                        "author" => {
+                            let lit: Lit = syn::parse2(list.tokens)?;
+                            if let Lit::Str(s) = lit {
+                                meta.author = Some(s.value());
                             }
                         }
                         "enter" => {
@@ -156,6 +204,10 @@ fn extract_sibling_attributes(attrs: &mut Vec<Attribute>, meta: &mut NodeMetaArg
             matches!(
                 segs[0].as_str(),
                 "name"
+                    | "version"
+                    | "description"
+                    | "desc"
+                    | "author"
                     | "enter"
                     | "exit"
                     | "context"
@@ -169,6 +221,10 @@ fn extract_sibling_attributes(attrs: &mut Vec<Attribute>, meta: &mut NodeMetaArg
             matches!(
                 segs[1].as_str(),
                 "name"
+                    | "version"
+                    | "description"
+                    | "desc"
+                    | "author"
                     | "enter"
                     | "exit"
                     | "context"
@@ -190,6 +246,21 @@ fn extract_sibling_attributes(attrs: &mut Vec<Attribute>, meta: &mut NodeMetaArg
                         meta.name = Some(parsed.value());
                     } else if let Ok(parsed) = attr.parse_args::<syn::Ident>() {
                         meta.name = Some(parsed.to_string());
+                    }
+                }
+                "version" => {
+                    if let Ok(parsed) = attr.parse_args::<syn::LitStr>() {
+                        meta.version = Some(parsed.value());
+                    }
+                }
+                "description" | "desc" => {
+                    if let Ok(parsed) = attr.parse_args::<syn::LitStr>() {
+                        meta.description = Some(parsed.value());
+                    }
+                }
+                "author" => {
+                    if let Ok(parsed) = attr.parse_args::<syn::LitStr>() {
+                        meta.author = Some(parsed.value());
                     }
                 }
                 "enter" => {
@@ -229,6 +300,23 @@ fn extract_sibling_attributes(attrs: &mut Vec<Attribute>, meta: &mut NodeMetaArg
         }
     }
     *attrs = retained;
+}
+
+/// Checks whether an attribute matches a target name (bare or prefixed with `modtree::`).
+fn is_attr_named(attr: &Attribute, target: &str) -> bool {
+    let segs: Vec<_> = attr
+        .path()
+        .segments
+        .iter()
+        .map(|s| s.ident.to_string())
+        .collect();
+    if segs.len() == 1 {
+        segs[0] == target
+    } else if segs.len() == 2 && segs[0] == "modtree" {
+        segs[1] == target
+    } else {
+        false
+    }
 }
 
 /// Converts PascalCase to snake_case.
@@ -582,5 +670,126 @@ pub fn outcome(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Granular attribute specifying the Error type.
 #[proc_macro_attribute]
 pub fn error(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+/// Declares an installable bundle on a struct.
+///
+/// Implements `modtree::bundle::Bundle` for the struct, installing child fields implementing
+/// `IntoTreeNode` into the target root module. Individual fields can optionally specify target
+/// mount subpaths using `#[modtree::mount("services/users")]`.
+#[proc_macro_attribute]
+pub fn bundle(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut meta = parse_macro_input!(attr as NodeMetaArgs);
+    let mut input = parse_macro_input!(item as ItemStruct);
+
+    extract_sibling_attributes(&mut input.attrs, &mut meta);
+
+    let struct_ident = &input.ident;
+    let bundle_name = meta
+        .name
+        .clone()
+        .unwrap_or_else(|| to_snake_case(&struct_ident.to_string()));
+    let bundle_version = meta.version.clone().unwrap_or_else(|| "0.1.0".to_string());
+    let bundle_desc = meta.description.clone().unwrap_or_default();
+    let bundle_author = meta.author.clone().unwrap_or_default();
+
+    let (impl_gen, ctx_ty, intent_ty, outcome_ty, err_ty) = build_generics(&input.generics, &meta);
+    let (_, ty_gen, where_clause) = input.generics.split_for_impl();
+
+    let mut field_mounts = Vec::new();
+    let mut field_predicates = Vec::new();
+
+    if let syn::Fields::Named(ref mut named) = input.fields {
+        for field in &mut named.named {
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ty = &field.ty;
+
+            let mut mount_path_segments: Option<Vec<String>> = None;
+            let mut retained_attrs = Vec::new();
+
+            for attr in field.attrs.drain(..) {
+                if is_attr_named(&attr, "mount") {
+                    if let Ok(lit) = attr.parse_args::<syn::LitStr>() {
+                        let path_val = lit.value();
+                        let segs: Vec<String> = path_val
+                            .split(['/', '.'])
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .collect();
+                        mount_path_segments = Some(segs);
+                    }
+                } else {
+                    retained_attrs.push(attr);
+                }
+            }
+            field.attrs = retained_attrs;
+
+            field_predicates.push(quote! {
+                #field_ty: ::core::clone::Clone + ::modtree::tree::IntoTreeNode<#ctx_ty, #intent_ty, #outcome_ty, #err_ty>
+            });
+
+            if let Some(segs) = mount_path_segments {
+                field_mounts.push(quote! {
+                    root.mount_into(&[ #( #segs ),* ], self.#field_ident.clone().into_tree_node())?;
+                });
+            } else {
+                field_mounts.push(quote! {
+                    root.mount(self.#field_ident.clone().into_tree_node());
+                });
+            }
+        }
+    }
+
+    let expanded = quote! {
+        #input
+
+        #[automatically_derived]
+        impl #impl_gen ::modtree::bundle::Bundle<#ctx_ty, #intent_ty, #outcome_ty, #err_ty> for #struct_ident #ty_gen
+        #where_clause
+        where
+            #( #field_predicates, )*
+        {
+            fn descriptor(&self) -> &::modtree::bundle::BundleDescriptor {
+                static DESCRIPTOR: ::modtree::bundle::BundleDescriptor = ::modtree::bundle::BundleDescriptor {
+                    name: #bundle_name,
+                    version: #bundle_version,
+                    description: #bundle_desc,
+                    author: #bundle_author,
+                };
+                &DESCRIPTOR
+            }
+
+            fn install(&self, root: &mut ::modtree::tree::ModuleNode<#ctx_ty, #intent_ty, #outcome_ty, #err_ty>) -> ::core::result::Result<(), ::modtree::bundle::BundleError> {
+                #( #field_mounts )*
+                ::core::result::Result::Ok(())
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Granular attribute specifying the target mount path of a bundle field.
+#[proc_macro_attribute]
+pub fn mount(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+/// Granular attribute specifying the bundle semantic version.
+#[proc_macro_attribute]
+pub fn version(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+/// Granular attribute specifying the bundle description.
+#[proc_macro_attribute]
+pub fn description(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+/// Granular attribute specifying the bundle author.
+#[proc_macro_attribute]
+pub fn author(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }

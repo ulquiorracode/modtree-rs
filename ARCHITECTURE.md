@@ -166,7 +166,73 @@ To ensure zero-allocation operation on the hot execution path:
 
 ---
 
-## 5. Workspace Topology & Decoupling
+## 5. The Bundle Deployment System
+
+In addition to individual tree nodes, `modtree` provides a declarative
+component packaging and installation system called **Bundle**.
+
+### 5.1 Architectural Invariant: A Bundle is Not a TreeNode
+
+A `Bundle` is not a node inside the hierarchy; it is an installable deployment
+specification and package manifest (analogous to a Docker image or package
+container) that encapsulates modules, libraries, commands, and capability
+policies, mounting them into a target root tree:
+
+```mermaid
+flowchart LR
+    subgraph Package ["Declarative Bundle (Image)"]
+        BD["BundleDescriptor<br/>(name, version, author)"]
+        M1["Mount Point: system/security<br/>AuthLibrary"]
+        M2["Mount Point: services/finance<br/>BillingLibrary"]
+    end
+
+    subgraph Tree ["Runtime Control Plane Tree"]
+        ROOT["Root ModuleNode"]
+        SEC["Module: system/security"]
+        FIN["Module: services/finance"]
+        AUTH["Library: auth"]
+        BILL["Library: billing"]
+    end
+
+    Package -- "Bundle::install(&mut root)" --> Tree
+    ROOT --> SEC --> AUTH
+    ROOT --> FIN --> BILL
+```
+
+### 5.2 Bundle Trait Contract
+
+```rust
+pub trait Bundle<Ctx, Intent, Outcome, E> {
+    /// Metadata descriptor for this bundle.
+    fn descriptor(&self) -> &BundleDescriptor;
+
+    /// Installs this bundle's subtrees into the root module.
+    fn install(
+        &self,
+        root: &mut ModuleNode<Ctx, Intent, Outcome, E>,
+    ) -> Result<(), BundleError>;
+
+    /// Optional uninstallation logic to detach components.
+    fn uninstall(
+        &self,
+        root: &mut ModuleNode<Ctx, Intent, Outcome, E>,
+    ) -> Result<(), BundleError>;
+}
+```
+
+### 5.3 Automated Intermediate Path Mounting & Conflict Resolution
+
+When `ModuleNode::mount_into` or `mount_at` is called:
+
+1. Intermediate `ModuleNode` branch instances are automatically synthesized
+   if they do not yet exist.
+2. If a node with the same name already exists at the target destination,
+   installation fails fast with `BundleError::MountConflict`, guaranteeing
+   non-destructive, safe composition.
+
+---
+
+## 6. Workspace Topology & Decoupling
 
 The repository is organized into cleanly partitioned crates:
 
@@ -181,7 +247,7 @@ The repository is organized into cleanly partitioned crates:
 
 ---
 
-## 6. Integration with Sister Ecosystems
+## 7. Integration with Sister Ecosystems
 
 `modtree` serves as the routing backbone across several core systems:
 
@@ -200,12 +266,12 @@ The repository is organized into cleanly partitioned crates:
 
 ---
 
-## 7. Tiered Developer Experience & Macro Architecture
+## 8. Tiered Developer Experience & Macro Architecture
 
 To balance mechanical sympathy with ergonomic developer experience,
 `modtree` implements a 3-tier API model:
 
-### 7.1 Tier 1: Attribute Macros (`modtree-macros`)
+### 8.1 Tier 1: Attribute Macros (`modtree-macros`)
 
 Declarative domain structs annotated with attributes:
 
@@ -215,29 +281,34 @@ Declarative domain structs annotated with attributes:
 - `#[modtree::library]`: Annotates an `impl` block or struct. Extracts all
   methods marked with `#[modtree::command]` and mounts them as terminal
   `CommandNode` instances.
+- `#[modtree::bundle]`: Transforms a struct into an installable `Bundle`
+  deployment specification. Fields can specify declarative mount subpaths
+  using `#[modtree::mount("sub/path")]`.
 - Granular Metadata: `#[modtree::name]`, `#[modtree::enter]`, `#[modtree::exit]`,
   `#[modtree::context]`, `#[modtree::intent]`, `#[modtree::outcome]`,
-  `#[modtree::error]`. Direct function identifiers are used without string quotes,
+  `#[modtree::error]`, `#[modtree::version]`, `#[modtree::description]`,
+  `#[modtree::author]`. Direct function identifiers are used without string quotes,
   enabling IDE autocompletion, Go-to-Definition, and compile-time signature checks.
 
-### 7.2 Tier 2: Typestate Fluent Builder
+### 8.2 Tier 2: Typestate Fluent Builder
 
 Imperative builders for dynamic and runtime module assembly:
 
 - `ModuleNode::named(name).with_mounted(child)`
 - `LibraryNode::named(name).with_command(cmd)`
+- `BundleBuilder::new(name, version).mount_into(path, node).build()`
 
 The typestate pattern restricts `LibraryNode` from exposing general mounting
 methods, preventing invalid child adoption at compile-time.
 
-### 7.3 Tier 3: Core Zero-Allocation Traversal
+### 8.3 Tier 3: Core Zero-Allocation Traversal
 
 The foundation executing the U-cycle traversal across `TreeNode` instances on
 the CPU call stack without allocating heap memory during resolution.
 
 ---
 
-## 8. Versioning & Stability Guarantees
+## 9. Versioning & Stability Guarantees
 
 `modtree-rs` adheres to Semantic Versioning (SemVer 2.0.0):
 
