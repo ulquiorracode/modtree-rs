@@ -275,7 +275,7 @@ version = "0.2.0"
 dependencies = [
  "criterion",
  "modtree-core",
- "modtree-macros",
+ "modtree-derive",
 ]
 
 [[package]]
@@ -286,7 +286,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "modtree-macros"
+name = "modtree-derive"
 version = "0.2.0"
 dependencies = [
  "proc-macro2",

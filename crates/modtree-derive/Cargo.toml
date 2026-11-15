@@ -1,5 +1,5 @@
 [package]
-name = "modtree-macros"
+name = "modtree-derive"
 version = "0.2.0"
 edition = "2024"
 authors = ["UlquiorraCode Contributors"]

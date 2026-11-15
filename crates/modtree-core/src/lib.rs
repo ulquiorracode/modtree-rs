@@ -25,6 +25,8 @@
 extern crate alloc;
 
 pub mod bundle;
+#[cfg(feature = "builder")]
+pub mod builder;
 pub mod error;
 pub mod flow;
 pub mod node;
@@ -48,11 +50,15 @@ pub use router::{PathSegments, dispatch};
 pub use tree::{
     AsTreeNode, CommandNode, IntoTreeNode, LibraryNode, ModuleNode, PluginNode, TreeNode,
 };
+#[cfg(feature = "builder")]
+pub use builder::{CommandBuilder, TreeBuilder};
 
 /// Unified prelude re-exporting key types, traits, and node constructors.
 pub mod prelude {
     #[cfg(feature = "alloc")]
     pub use crate::bundle::{Bundle, BundleBuilder, BundleMount, StaticBundle};
+    #[cfg(feature = "builder")]
+    pub use crate::builder::{CommandBuilder, TreeBuilder};
     pub use crate::bundle::{BundleDescriptor, BundleError};
     pub use crate::error::RoutingError;
     pub use crate::flow::FlowControl;

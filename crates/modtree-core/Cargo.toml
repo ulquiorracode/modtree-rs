@@ -8,9 +8,10 @@ description = "Zero-allocation core hierarchical modular routing & tree composit
 repository = "https://github.com/ulquiorracode/modtree-rs"
 
 [features]
-default = ["std"]
+default = ["std", "builder"]
 std = ["alloc", "stitch-core/std"]
 alloc = []
+builder = ["alloc"]
 
 [dependencies]
 stitch-core = { git = "https://github.com/ulquiorracode/stitch-rs.git", branch = "dev", default-features = false }

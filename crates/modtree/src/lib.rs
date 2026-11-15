@@ -14,12 +14,12 @@ extern crate self as modtree;
 
 pub use modtree_core::*;
 
-#[cfg(feature = "macros")]
-pub use modtree_macros::*;
+#[cfg(feature = "derive")]
+pub use modtree_derive::*;
 
 /// Convenient prelude module containing all core traits, macros, and node constructors.
 pub mod prelude {
     pub use modtree_core::prelude::*;
-    #[cfg(feature = "macros")]
-    pub use modtree_macros::*;
+    #[cfg(feature = "derive")]
+    pub use modtree_derive::*;
 }
