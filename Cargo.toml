@@ -7,16 +7,16 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["UlquiorraCode Contributors"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ulquiorracode/modtree-rs"
 
 [workspace.dependencies]
-modtree-core = { path = "crates/modtree-core", version = "0.2.0", default-features = false }
-modtree-derive = { path = "crates/modtree-derive", version = "0.2.0" }
-modtree = { path = "crates/modtree", version = "0.2.0" }
+modtree-core = { path = "crates/modtree-core", version = "0.3.0", default-features = false }
+modtree-derive = { path = "crates/modtree-derive", version = "0.3.0" }
+modtree = { path = "crates/modtree", version = "0.3.0" }
 
 [profile.release]
 opt-level = 3
