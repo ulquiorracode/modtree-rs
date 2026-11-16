@@ -269,11 +269,27 @@ The repository is organized into cleanly partitioned crates:
 ## 8. Tiered Developer Experience & Macro Architecture
 
 To balance mechanical sympathy with ergonomic developer experience,
-`modtree` implements a 3-tier API model:
+`modtree` implements the universal 3-tier API model:
 
-### 8.1 Tier 1: Attribute Macros (`modtree-macros`)
+### 8.1 Tier 1: Core Zero-Allocation Traversal (`modtree-core`)
 
-Declarative domain structs annotated with attributes:
+The foundation executing the U-cycle traversal across `TreeNode` instances on
+the CPU call stack without allocating heap memory during resolution. Exposes
+pure data-oriented imperative types (`CommandNode`, `ModuleNode`, `LibraryNode`, `PluginNode`).
+
+### 8.2 Tier 2: Fluent Builder API (`TreeBuilder` & `CommandBuilder`)
+
+Imperative fluent builders for dynamic and runtime module assembly, gated behind `feature = "builder"`:
+
+- `TreeBuilder::new(name).command(cmd).module(sub).mount(child).build()`
+- `CommandBuilder::new(name, handler).on_enter(hook).on_exit(hook).build()`
+- `BundleBuilder::new(name, version).mount_into(path, node).build()`
+
+Provides ergonomic method chaining without polluting Tier 1 core structs.
+
+### 8.3 Tier 3: Attribute Macros (`modtree-derive`)
+
+Declarative domain structs annotated with attributes, compiling down to Tier 2/1:
 
 - `#[modtree::module]`: Transforms a struct into a composite `ModuleNode`.
   Inspects child struct fields and automatically calls `mount(field)` for any
@@ -289,22 +305,6 @@ Declarative domain structs annotated with attributes:
   `#[modtree::error]`, `#[modtree::version]`, `#[modtree::description]`,
   `#[modtree::author]`. Direct function identifiers are used without string quotes,
   enabling IDE autocompletion, Go-to-Definition, and compile-time signature checks.
-
-### 8.2 Tier 2: Typestate Fluent Builder
-
-Imperative builders for dynamic and runtime module assembly:
-
-- `ModuleNode::named(name).with_mounted(child)`
-- `LibraryNode::named(name).with_command(cmd)`
-- `BundleBuilder::new(name, version).mount_into(path, node).build()`
-
-The typestate pattern restricts `LibraryNode` from exposing general mounting
-methods, preventing invalid child adoption at compile-time.
-
-### 8.3 Tier 3: Core Zero-Allocation Traversal
-
-The foundation executing the U-cycle traversal across `TreeNode` instances on
-the CPU call stack without allocating heap memory during resolution.
 
 ---
 

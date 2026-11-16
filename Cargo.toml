@@ -1,36 +1,22 @@
 [workspace]
 members = [
-    ".",
     "crates/modtree-core",
-    "crates/modtree-macros",
+    "crates/modtree-derive",
+    "crates/modtree",
 ]
+resolver = "2"
 
-[package]
-name = "modtree"
-version = "0.2.0"
+[workspace.package]
+version = "0.3.0"
 edition = "2024"
 authors = ["UlquiorraCode Contributors"]
 license = "MIT OR Apache-2.0"
-description = "Ultra-fast zero-allocation hierarchical modular routing & tree composition engine in Rust"
-readme = "README.md"
 repository = "https://github.com/ulquiorracode/modtree-rs"
 
-[features]
-default = ["std", "macros"]
-std = ["modtree-core/std"]
-alloc = ["modtree-core/alloc"]
-macros = ["dep:modtree-macros"]
-
-[dependencies]
-modtree-core = { path = "crates/modtree-core", version = "0.2.0", default-features = false }
-modtree-macros = { path = "crates/modtree-macros", version = "0.2.0", optional = true }
-
-[dev-dependencies]
-criterion = "0.8"
-
-[[bench]]
-name = "baseline_bench"
-harness = false
+[workspace.dependencies]
+modtree-core = { path = "crates/modtree-core", version = "0.3.0", default-features = false }
+modtree-derive = { path = "crates/modtree-derive", version = "0.3.0" }
+modtree = { path = "crates/modtree", version = "0.3.0" }
 
 [profile.release]
 opt-level = 3
