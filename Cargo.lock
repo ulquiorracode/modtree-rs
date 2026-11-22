@@ -499,7 +499,7 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 [[package]]
 name = "stitch-core"
 version = "0.3.1"
-source = "git+https://github.com/ulquiorracode/stitch-rs.git?branch=dev#0bc33a92360253f826e653d7a18c852c136debd3"
+source = "git+https://github.com/ulquiorracode/stitch-rs.git?branch=dev#4fa12aea74f49e44cd72e7b55029b77ddd62a9bd"
 
 [[package]]
 name = "syn"
